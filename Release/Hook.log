@@ -1,0 +1,11 @@
+﻿  dllmain.cpp
+C:\Users\cvella\source\repos\Powerpoint_Harness\Hook\dllmain.cpp(78,45): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+C:\Users\cvella\source\repos\Powerpoint_Harness\Hook\dllmain.cpp(91,41): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+C:\Users\cvella\source\repos\Powerpoint_Harness\Hook\dllmain.cpp(106,37): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+     Creating library C:\Users\cvella\source\repos\Powerpoint_Harness\Release\Hook.lib and object C:\Users\cvella\source\repos\Powerpoint_Harness\Release\Hook.exp
+  Generating code
+  3 of 7 functions (42.9%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  Hook.vcxproj -> C:\Users\cvella\source\repos\Powerpoint_Harness\Release\Hook.dll

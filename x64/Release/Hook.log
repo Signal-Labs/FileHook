@@ -1,0 +1,11 @@
+﻿  dllmain.cpp
+D:\Code\FileHook\dllmain.cpp(80,45): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(93,41): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(108,37): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+     Creating library D:\Code\FileHook\x64\Release\Hook.lib and object D:\Code\FileHook\x64\Release\Hook.exp
+  Generating code
+  2 of 7 functions (28.6%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  Hook.vcxproj -> D:\Code\FileHook\x64\Release\Hook.dll
