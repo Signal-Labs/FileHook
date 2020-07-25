@@ -2,6 +2,8 @@
 
 This DLL can be injected into a process to load up a buffer containing the contents of any file from disk, and then redirect any future file creates/reads to this buffer.
 
+Pretty much like a RAM disk, but not an actual RAM disk.
+
 I use this for fuzzing, when I want to have a single buffer in-memory for modifying a file and ensure the process only reads from my buffer (also prevents unneccessary disk accesses).
 
 Note: Requires Detours https://github.com/microsoft/Detours
