@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30225.117
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Hook", "Hook.vcxproj", "{CBFBE9E3-1C47-4BA1-8C33-F68CC31BF944}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Hook_TestSuite", "..\Hook_TestSuite\Hook_TestSuite.vcxproj", "{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{CBFBE9E3-1C47-4BA1-8C33-F68CC31BF944}.Release|x64.Build.0 = Release|x64
 		{CBFBE9E3-1C47-4BA1-8C33-F68CC31BF944}.Release|x86.ActiveCfg = Release|Win32
 		{CBFBE9E3-1C47-4BA1-8C33-F68CC31BF944}.Release|x86.Build.0 = Release|Win32
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Debug|x64.ActiveCfg = Debug|x64
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Debug|x64.Build.0 = Debug|x64
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Debug|x86.ActiveCfg = Debug|Win32
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Debug|x86.Build.0 = Debug|Win32
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Release|x64.ActiveCfg = Release|x64
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Release|x64.Build.0 = Release|x64
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Release|x86.ActiveCfg = Release|Win32
+		{71A5DF6D-5F9D-4197-B5D5-0073D90D426B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

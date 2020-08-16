@@ -1,7 +1,10 @@
 ﻿  dllmain.cpp
-D:\Code\FileHook\dllmain.cpp(80,45): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(93,41): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(108,37): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(96,46): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(124,42): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(142,38): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(186,23): warning C4018: '<': signed/unsigned mismatch
+D:\Code\FileHook\dllmain.cpp(284,23): warning C4018: '<': signed/unsigned mismatch
+D:\Code\FileHook\dllmain.cpp(343,23): warning C4018: '<': signed/unsigned mismatch
      Creating library D:\Code\FileHook\x64\Release\Hook.lib and object D:\Code\FileHook\x64\Release\Hook.exp
   Generating code
   2 of 7 functions (28.6%) were compiled, the rest were copied from previous compilation.
