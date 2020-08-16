@@ -10,7 +10,7 @@ struct FileHandleStruct {
     ULONGLONG pos;
     BYTE* buf;
     WCHAR* fName;
-    ULONGLONG bufLen;
+    DWORD64 bufLen;
     unsigned int type;
     BOOL async;
 };
@@ -65,6 +65,13 @@ extern "C"
 __declspec(dllexport)
 DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverlapped, FileHandleStruct* fStruct, BOOL* retVal, BOOL async)
 {
+    // Return false if opened ASYNC but not providing an overlapped struct
+    if (async) {
+        if (lpOverlapped == NULL) {
+            *retVal = FALSE;
+            return -1;
+        }
+    }
     DWORD bytesRead = nNumberOfBytesToRead;
     DWORD64 lpOverlapped_Offset = 0;
     if (lpOverlapped != 0)
@@ -104,7 +111,7 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
                 
             }
             memcpy(lpBuffer, (byte*)fStruct->buf + lpOverlapped_Offset, bytesRead);
-            //pos = lpOverlapped_Offset + bytesRead;
+            fStruct->pos = lpOverlapped_Offset + bytesRead;
 
             if (hEvent > 0) {
                 SetEvent(hEvent);
