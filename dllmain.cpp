@@ -15,12 +15,22 @@ struct FileHandleStruct {
     BOOL async;
 };
 
+struct OverlappedResult {
+    HANDLE hFile;
+    LPOVERLAPPED lpOverlapped;
+    LPDWORD lpNumberOfBytesTransferred;
+    DWORD bytesTransferred;
+    BOOL eof;
+};
+
 BOOL firstRead = FALSE;
 HANDLE RealFakeWriteable = 0;
 BOOL init = FALSE;
 CONST unsigned int hFiles_sz = 20;
 unsigned int hFiles_Elem = 0;
+unsigned int hOverlapped_Elem = 0;
 FileHandleStruct hFiles[hFiles_sz];
+OverlappedResult hOverlapped[hFiles_sz*2];
 
 BOOL (WINAPI* fWriteFile)(
     HANDLE       hFile,
@@ -28,6 +38,13 @@ BOOL (WINAPI* fWriteFile)(
     DWORD        nNumberOfBytesToWrite,
     LPDWORD      lpNumberOfBytesWritten,
     LPOVERLAPPED lpOverlapped
+);
+
+BOOL (WINAPI* fGetOverlappedResult)(
+    HANDLE       hFile,
+    LPOVERLAPPED lpOverlapped,
+    LPDWORD      lpNumberOfBytesTransferred,
+    BOOL         bWait
 );
 
 BOOL(WINAPI* fReadFile)(
@@ -78,11 +95,26 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
     {
         if (lpOverlapped->Offset > 0 || lpOverlapped->OffsetHigh > 0)
             lpOverlapped_Offset = (DWORD64)lpOverlapped->OffsetHigh << 32 | (DWORD64)lpOverlapped->Offset;
-        // Offset out-of-bounds
+        // Offset out-of-bounds case
         if (lpOverlapped_Offset >= fStruct->bufLen) {
-            SetLastError(ERROR_HANDLE_EOF);
-            *retVal = FALSE;
-            return -1;
+            if (async) {
+                SetLastError(ERROR_IO_PENDING);
+                OverlappedResult oRes = { 0 };
+                oRes.bytesTransferred = 0;
+                oRes.eof = TRUE;
+                oRes.hFile = fStruct->hFile;
+                oRes.lpOverlapped = lpOverlapped;
+                hOverlapped[hOverlapped_Elem] = oRes;
+                hOverlapped_Elem += 1;
+                *retVal = FALSE;
+                return -1;
+            }
+            else {
+                SetLastError(ERROR_HANDLE_EOF);
+                *retVal = FALSE;
+                return -1;
+            }
+           
         }
     }
     else
@@ -96,12 +128,19 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
         // If doing an offset read
         if (lpOverlapped != 0)
         {
+            BOOL eof = FALSE;
             *retVal = TRUE;
-            SetLastError(0);
+            if (async) {
+                SetLastError(ERROR_IO_PENDING);
+            }
+            else {
+                SetLastError(0);
+            }
             if ((lpOverlapped_Offset + nNumberOfBytesToRead) > fStruct->bufLen)
             {
+                eof = TRUE;
                 bytesRead = (fStruct->bufLen - lpOverlapped_Offset);
-                SetLastError(ERROR_HANDLE_EOF);
+                //SetLastError(ERROR_IO_PENDING);
                 if (async) {
                     *retVal = FALSE;
                 }
@@ -116,7 +155,13 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
             if (hEvent > 0) {
                 SetEvent(hEvent);
             }
-            
+            OverlappedResult oRes = { 0 };
+            oRes.bytesTransferred = bytesRead;
+            oRes.eof = eof;
+            oRes.hFile = fStruct->hFile;
+            oRes.lpOverlapped = lpOverlapped;
+            hOverlapped[hOverlapped_Elem] = oRes;
+            hOverlapped_Elem += 1;
             return bytesRead;
         }
         // If not doing an offset read
@@ -157,6 +202,28 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
 
 }
 
+
+BOOL MyGetOverlappedResult(HANDLE       hFile,
+    LPOVERLAPPED lpOverlapped,
+    LPDWORD      lpNumberOfBytesTransferred,
+    BOOL         bWait) {
+
+    for (int i = 0; i < hOverlapped_Elem; i++) {
+        if (hOverlapped[i].hFile == hFile && hOverlapped[i].lpOverlapped == lpOverlapped) {
+            *lpNumberOfBytesTransferred = hOverlapped[i].bytesTransferred;
+            if (hOverlapped[i].eof == TRUE) {
+                ZeroMemory(&hOverlapped[i], sizeof(hOverlapped[i]));
+                SetLastError(ERROR_HANDLE_EOF);
+                return FALSE;
+            }
+            else {
+                ZeroMemory(&hOverlapped[i], sizeof(hOverlapped[i]));
+                return TRUE;
+            }
+        }
+    }
+    return fGetOverlappedResult(hFile,lpOverlapped,lpNumberOfBytesTransferred,bWait);
+}
 
 // Faking writes to any file, we can ignore these in our fuzz case
 extern "C"
@@ -356,13 +423,13 @@ BOOL WINAPI MyReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead
     for (int i = 0; i < hFiles_Elem; i++)
     {
         if (hFile == hFiles[i].hFile) {
-           /* if (firstRead == FALSE) {
+            if (firstRead == FALSE) {
                 firstRead = TRUE;
                 int cpuinfo[4];
                 __cpuid(cpuinfo, 0x7b3c3638);
                 volatile ULONGLONG len = hFiles[i].bufLen;
                 volatile PVOID buf2 = hFiles[i].buf;
-            } */
+            } 
             BOOL retVal = FALSE;
 
             DWORD bytesRead = FakeRead(lpBuffer, nNumberOfBytesToRead, lpOverlapped, &hFiles[i], &retVal, hFiles[i].async);
@@ -411,8 +478,13 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength))GetProcAddress(LoadLibraryA("ntdll.dll"), "NtCreateFile");
         DetourAttach(&(PVOID&)fNtCreateFile, MyNtCreateFile);
         */
-        fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
+       fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
        DetourAttach(&(PVOID&)fCloseHandle, MyCloseHandle);
+       fGetOverlappedResult = (BOOL(WINAPI*)(HANDLE       hFile,
+           LPOVERLAPPED lpOverlapped,
+           LPDWORD      lpNumberOfBytesTransferred,
+           BOOL         bWait))GetProcAddress(LoadLibraryA("Kernel32.dll"), "GetOverlappedResult");
+       DetourAttach(&(PVOID&)fGetOverlappedResult, MyGetOverlappedResult);
        //fWriteFile = (BOOL(WINAPI*)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED))GetProcAddress(LoadLibraryA("kernel32.dll"), "WriteFile");
        //DetourAttach(&(PVOID&)fWriteFile, MyWriteFile);
        DetourTransactionCommit();
