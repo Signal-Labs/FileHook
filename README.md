@@ -8,6 +8,8 @@ I use this for fuzzing, when I want to have a single buffer in-memory for modify
 
 Initally developed this to work with a custom hypervisor fuzzer that doesn't support disks, but its useful in other cases too.
 
+This should support both ASYNC and SYNC reads, including OVERLAPPED reads. Not great for running on a target long-term (due to likely mem-leaks or something), I use this for snapshot fuzzing so haven't been worrried about that. 
+
 Note: There are three #define HARDCODED_FILEPATH vars, one is the target to intercept, another is one we will map in-mem (may be the same as target or different), another is used if we fake writes.
 
 The idea is:
