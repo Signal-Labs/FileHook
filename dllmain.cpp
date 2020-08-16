@@ -176,7 +176,9 @@ NTSTATUS(WINAPI* fNtCreateFile)(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, P
 
 BOOL ShouldHook = TRUE;
 
+void Pop(int index) {
 
+}
 
 extern "C"
 __declspec(dllexport)
@@ -282,6 +284,10 @@ HANDLE WINAPI MyCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
 {
    
     for (int i = 0; i < hFiles_Elem; i++) {
+        // Check for a zeroed out entry (since we dont properly pop entries after CloseHandle() is called
+        if (hFiles[i].hFile == 0) {
+            continue;
+        }
         if (_wcsicmp(lpFileName, hFiles[i].fName) == 0) {
             // Lets clone it
             struct FileHandleStruct newStruct = {};
