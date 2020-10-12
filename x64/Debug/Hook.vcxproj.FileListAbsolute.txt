@@ -1,0 +1,2 @@
+D:\Code\FileHook\x64\Debug\Hook.dll
+D:\Code\FileHook\x64\Debug\Hook.pdb

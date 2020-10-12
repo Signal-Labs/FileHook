@@ -1,0 +1,8 @@
+﻿  dllmain.cpp
+D:\Code\FileHook\dllmain.cpp(103,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(131,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(149,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(195,23): warning C4018: '<': signed/unsigned mismatch
+D:\Code\FileHook\dllmain.cpp(293,23): warning C4018: '<': signed/unsigned mismatch
+D:\Code\FileHook\dllmain.cpp(356,23): warning C4018: '<': signed/unsigned mismatch
+  Hook.vcxproj -> D:\Code\FileHook\x64\Debug\Hook.dll

@@ -1,11 +1,7 @@
 ﻿  dllmain.cpp
-D:\Code\FileHook\dllmain.cpp(142,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(176,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(194,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(211,23): warning C4018: '<': signed/unsigned mismatch
-D:\Code\FileHook\dllmain.cpp(262,23): warning C4018: '<': signed/unsigned mismatch
-D:\Code\FileHook\dllmain.cpp(360,23): warning C4018: '<': signed/unsigned mismatch
-D:\Code\FileHook\dllmain.cpp(423,23): warning C4018: '<': signed/unsigned mismatch
+D:\Code\FileHook\dllmain.cpp(150,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(184,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(202,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
      Creating library D:\Code\FileHook\x64\Release\Hook.lib and object D:\Code\FileHook\x64\Release\Hook.exp
   Generating code
   3 of 8 functions (37.5%) were compiled, the rest were copied from previous compilation.

@@ -1,3 +1,5 @@
 ﻿  dllmain.cpp
-D:\Code\Fuzzing_Harnesses\Powerpoint_Harness\Hook\dllmain.cpp(42,29): warning C4244: '=': conversion from 'ULONGLONG' to 'DWORD', possible loss of data
-  Hook.vcxproj -> D:\Code\Fuzzing_Harnesses\Powerpoint_Harness\Debug\Hook.dll
+D:\Code\FileHook\dllmain.cpp(150,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(184,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(202,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+  Hook.vcxproj -> D:\Code\FileHook\Debug\Hook.dll

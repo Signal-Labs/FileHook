@@ -3,6 +3,7 @@
 #include <winternl.h>
 #include "detours.h"
 #include <intrin.h>
+#include <shlwapi.h>
 
 
 struct FileHandleStruct {
@@ -26,11 +27,12 @@ struct OverlappedResult {
 BOOL firstRead = FALSE;
 HANDLE RealFakeWriteable = 0;
 BOOL init = FALSE;
-CONST unsigned int hFiles_sz = 20;
-unsigned int hFiles_Elem = 0;
-unsigned int hOverlapped_Elem = 0;
+CONST unsigned int hFiles_sz = 0x2000;
+LONGLONG hFiles_Elem;
+LONGLONG hOverlapped_Elem;
+CONST unsigned int hOverlapped_sz = 0x8000;
 FileHandleStruct hFiles[hFiles_sz];
-OverlappedResult hOverlapped[hFiles_sz*2];
+OverlappedResult hOverlapped[hOverlapped_sz];
 
 BOOL (WINAPI* fWriteFile)(
     HANDLE       hFile,
@@ -38,6 +40,10 @@ BOOL (WINAPI* fWriteFile)(
     DWORD        nNumberOfBytesToWrite,
     LPDWORD      lpNumberOfBytesWritten,
     LPOVERLAPPED lpOverlapped
+);
+
+BOOL (WINAPI* fFreeLibrary)(
+    HMODULE hLibModule
 );
 
 BOOL (WINAPI* fGetOverlappedResult)(
@@ -70,18 +76,19 @@ HANDLE(WINAPI* fCreateFileW)(
 );
 
 // Target to intercept
-#define HARDCODED_FILEPATH L"C:\\tmp\\test.blg\0\0\0\0"
+#define HARDCODED_FILEPATH L"C:\\Users\\user1\\AppData\\Roaming\\Zoom\\data\\adl__aarq6mvghqjf4sj6a@xmpp.zoom.us\\9d22dade16dbcae8b7843788036e4dd71c68742bb55377a9c95b2fa19c2008aa\\{14B0E7DA-5EA6-413D-A1F9-D8D39727511B}.png\0\0\0\0"
 
 // Copy we will memory-map
-#define HARDCODED_FILEPATH2 L"C:\\tmp\\hey.blg\0\0\0\0"
+#define HARDCODED_FILEPATH2 L"C:\\tmp\\test.png\0\0\0\0"
 
 // Something to fake writes for
-#define HARDCODED_FILEPATH3 L"C:\\tmp\\junk.blg\0\0\0\0"
+#define HARDCODED_FILEPATH3 L"C:\\tmp\\junk.png\0\0\0\0"
 
 extern "C"
 __declspec(dllexport)
 DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverlapped, FileHandleStruct* fStruct, BOOL* retVal, BOOL async)
 {
+    LONGLONG tmpOverlappedElem = hOverlapped_Elem;
     // Return false if opened ASYNC but not providing an overlapped struct
     if (async) {
         if (lpOverlapped == NULL) {
@@ -98,14 +105,15 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
         // Offset out-of-bounds case
         if (lpOverlapped_Offset >= fStruct->bufLen) {
             if (async) {
+
                 SetLastError(ERROR_IO_PENDING);
                 OverlappedResult oRes = { 0 };
                 oRes.bytesTransferred = 0;
                 oRes.eof = TRUE;
                 oRes.hFile = fStruct->hFile;
                 oRes.lpOverlapped = lpOverlapped;
-                hOverlapped[hOverlapped_Elem] = oRes;
-                hOverlapped_Elem += 1;
+                hOverlapped[tmpOverlappedElem] = oRes;
+                hOverlapped_Elem = tmpOverlappedElem + 1;
                 *retVal = FALSE;
                 return -1;
             }
@@ -160,8 +168,8 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
             oRes.eof = eof;
             oRes.hFile = fStruct->hFile;
             oRes.lpOverlapped = lpOverlapped;
-            hOverlapped[hOverlapped_Elem] = oRes;
-            hOverlapped_Elem += 1;
+            hOverlapped[tmpOverlappedElem] = oRes;
+            hOverlapped_Elem = tmpOverlappedElem + 1;
             return bytesRead;
         }
         // If not doing an offset read
@@ -276,7 +284,10 @@ BOOL WINAPI MyCloseHandle(HANDLE hObject)
     
 }
 
-
+BOOL MyFreeLibrary(HMODULE hLibModule) {
+    // FAKE IT
+    return TRUE;
+}
 
 
 
@@ -284,6 +295,8 @@ extern "C"
 __declspec(dllexport)
 HANDLE CreateFileHandle()
 {
+    hOverlapped_Elem = 0;
+    hFiles_Elem = 0;
     // Fake "writable" handle
     RealFakeWriteable = CreateFileW(
         HARDCODED_FILEPATH3,
@@ -334,7 +347,7 @@ HANDLE CreateFileHandle()
         0,
         0
     );
-    fStruct.fName = (WCHAR*)calloc(1, MAX_PATH);
+    fStruct.fName = (WCHAR*)calloc(1, MAX_PATH*3);
     lstrcpyW(fStruct.fName,(WCHAR*)HARDCODED_FILEPATH);
     fStruct.pos = 0;
 
@@ -360,9 +373,10 @@ HANDLE WINAPI MyCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
     for (int i = 0; i < hFiles_Elem; i++) {
         // Check for a zeroed out entry (since we dont properly pop entries after CloseHandle() is called
         if (hFiles[i].hFile == 0) {
-            continue;
+            continue;   
         }
-        if (_wcsicmp(lpFileName, hFiles[i].fName) == 0) {
+        // Sometimes lpFileName is not ended with 4-NULL bytes, lets fix this
+        if (_wcsicmp(lpFileName,hFiles[i].fName) == 0) {
             // Lets clone it
             struct FileHandleStruct newStruct = {};
             if (dwFlagsAndAttributes & FILE_FLAG_OVERLAPPED) {
@@ -373,7 +387,7 @@ HANDLE WINAPI MyCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
             }
             newStruct.buf = hFiles[i].buf;
             newStruct.bufLen = hFiles[i].bufLen;
-            newStruct.fName = (WCHAR*)calloc(1, MAX_PATH);
+            newStruct.fName = (WCHAR*)calloc(1, MAX_PATH*3);
             lstrcpyW(newStruct.fName,hFiles[i].fName);
             
             HANDLE hFileTmp = fCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
@@ -455,6 +469,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     LPVOID lpReserved
 )
 {
+   
     HANDLE hTest = 0;
     switch (ul_reason_for_call)
     {
@@ -478,8 +493,10 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength))GetProcAddress(LoadLibraryA("ntdll.dll"), "NtCreateFile");
         DetourAttach(&(PVOID&)fNtCreateFile, MyNtCreateFile);
         */
-       fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
-       DetourAttach(&(PVOID&)fCloseHandle, MyCloseHandle);
+       //fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
+       //DetourAttach(&(PVOID&)fCloseHandle, MyCloseHandle);
+       //fFreeLibrary = (BOOL(WINAPI*)(HMODULE))GetProcAddress(LoadLibraryA("kernelbase.dll"), "FreeLibrary");
+       //DetourAttach(&(PVOID&)fFreeLibrary, MyFreeLibrary);
        fGetOverlappedResult = (BOOL(WINAPI*)(HANDLE       hFile,
            LPOVERLAPPED lpOverlapped,
            LPDWORD      lpNumberOfBytesTransferred,
