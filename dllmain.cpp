@@ -34,6 +34,22 @@ CONST unsigned int hOverlapped_sz = 0x8000;
 FileHandleStruct hFiles[hFiles_sz];
 OverlappedResult hOverlapped[hOverlapped_sz];
 
+DWORD(WINAPI* fSetFilePointer)(
+    HANDLE       hFile,
+    LONG         lDistanceToMove,
+    PLONG        lpDistanceToMoveHigh,
+    DWORD        dwMoveMethod
+    );
+
+BOOL(WINAPI* fSetFilePointerEx)(
+    HANDLE       hFile,
+    LARGE_INTEGER        liDistanceToMove,
+    PLARGE_INTEGER       lpNewFilePointer,
+    DWORD        dwMoveMethod
+    );
+
+
+
 BOOL (WINAPI* fWriteFile)(
     HANDLE       hFile,
     LPCVOID      lpBuffer,
@@ -65,6 +81,17 @@ BOOL(WINAPI* fCloseHandle)(
     HANDLE hObject
     );
 
+BOOL(WINAPI* fGetFileSizeEx)(
+    HANDLE hFile,
+    PLARGE_INTEGER lpFileSize
+    );
+
+DWORD(WINAPI* fGetFileSize)(
+    HANDLE hFile,
+    LPDWORD lpFileSizeHigh
+   );
+
+
 HANDLE(WINAPI* fCreateFileW)(
     LPCWSTR               lpFileName,
     DWORD                 dwDesiredAccess,
@@ -77,7 +104,7 @@ HANDLE(WINAPI* fCreateFileW)(
 
 // Target to intercept
 #define HARDCODED_FILEPATH L"C:\\Users\\user1\\AppData\\Roaming\\Zoom\\data\\adl__aarq6mvghqjf4sj6a@xmpp.zoom.us\\9d22dade16dbcae8b7843788036e4dd71c68742bb55377a9c95b2fa19c2008aa\\{14B0E7DA-5EA6-413D-A1F9-D8D39727511B}.png\0\0\0\0"
-
+//#define HARDCODED_FILEPATH L"c:\\tmp\\test.blg\0\0\0\0"
 // Copy we will memory-map
 #define HARDCODED_FILEPATH2 L"C:\\tmp\\test.png\0\0\0\0"
 
@@ -211,6 +238,8 @@ DWORD FakeRead(LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverl
 }
 
 
+
+
 BOOL MyGetOverlappedResult(HANDLE       hFile,
     LPOVERLAPPED lpOverlapped,
     LPDWORD      lpNumberOfBytesTransferred,
@@ -266,7 +295,7 @@ extern "C"
 __declspec(dllexport)
 BOOL WINAPI MyCloseHandle(HANDLE hObject)
 {
-    // Not closing it, just faking, fine for our fuzz case
+    
     for (int i = 0; i < hFiles_Elem; i++) {
         if (hObject == hFiles[i].hFile) {
             ZeroMemory(&hFiles[i], sizeof(hFiles[i]));
@@ -360,8 +389,154 @@ HANDLE CreateFileHandle()
 
 
     return NULL;
+}
+
+// My implementation of "SetFilePointer" logic
+DWORD MySetFilePointerInternal(HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD dwMoveMethod, FileHandleStruct* fStruct)
+{
+    // If pos ever gets greater than sizeof LONGLONG, we could have errors with negative interpreted values
+    ULONGLONG fPos;
+    // Determine the position to adjust based on the param passed
+    switch (dwMoveMethod) {
+        case FILE_BEGIN: fPos = 0; break;
+        case FILE_CURRENT: fPos = fStruct->pos; break;
+        case FILE_END: fPos = fStruct->bufLen; break;
+        default: SetLastError(ERROR_INVALID_PARAMETER); return INVALID_SET_FILE_POINTER;
+    }
+    // Determine move type, this also affects the how we return
+    if (lpDistanceToMoveHigh == NULL)
+    {
+        // SHORT MOVE
+        // We adjust fPos, lDistanceToMove can be negative or positive to subtract or add to fpos
+        LONGLONG tmpPos = (LONGLONG)fPos + lDistanceToMove;
+        // Check if the adjustment goes into negatives, which cannot be permitted (while adjusting beyond the bufLen MAY be permitted)
+        if (tmpPos < 0)
+        {
+            // ERROR case, make no permanent changes, set error and return
+            SetLastError(ERROR_NEGATIVE_SEEK);
+            return INVALID_SET_FILE_POINTER;
+        }
+        else if ((LONGLONG)tmpPos != (LONG)tmpPos) {
+            // OVERFLOW, tmpPos is larger than 32bit and we're doing a short move, this is an ERROR path
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return INVALID_SET_FILE_POINTER;
+        } else {
+            // SUCCESS case
+            // Adjustment is valid, make the changes and return
+            fPos = tmpPos;
+            fStruct->pos = fPos;
+            // Casting should simply return the low-order bytes which is what we want, probably compiler dependent.
+            DWORD lowOrder32 = (DWORD)fPos;
+            return lowOrder32;
+        }
+    }
+    else {
+        // LONG MOVE
+        // Combine the two low-order and high-order values to a single value
+        LONGLONG adjust = (LONGLONG)*lpDistanceToMoveHigh << 32 | lDistanceToMove;
+        LONGLONG tmpPos = (LONGLONG)fPos + adjust;
+        // Check if the adjustment goes into negatives, which cannot be permitted (while adjusting beyond the bufLen MAY be permitted)
+        if (tmpPos < 0)
+        {
+            // ERROR case, make no permanent changes, set error and return
+            SetLastError(ERROR_NEGATIVE_SEEK);
+            return INVALID_SET_FILE_POINTER;
+        }
+        else {
+            // SUCCESS case
+            // Adjustment is valid, make the changes and return
+            fPos = tmpPos;
+            fStruct->pos = fPos;
+            // Casting should simply return the low-order bytes which is what we want, probably compiler dependent.
+            DWORD lowOrder32 = (DWORD)fPos;
+            // Set the high-order bytes in the second return param
+            DWORD highOrder32 = (fPos >> 32);
+            *lpDistanceToMoveHigh = highOrder32;
+            return lowOrder32;
+        }
+        
+    }
+
 
 }
+
+// My implementation of SetFilePointerEx logic
+BOOL MySetFilePointerExInternal(HANDLE hFile, LARGE_INTEGER liDistanceToMove, PLARGE_INTEGER lpNewFilePointer, DWORD dwMoveMethod, FileHandleStruct* fStruct)
+{
+    // If pos ever gets greater than sizeof LONGLONG, we could have errors with negative interpreted values
+    ULONGLONG fPos;
+    // Determine the position to adjust based on the param passed
+    switch (dwMoveMethod) {
+        case FILE_BEGIN: fPos = 0; break;
+        case FILE_CURRENT: fPos = fStruct->pos; break;
+        case FILE_END: fPos = fStruct->bufLen; break;
+        default: SetLastError(ERROR_INVALID_PARAMETER); return FALSE;
+    }
+
+    LONGLONG tmpPos = (LONGLONG)fPos + liDistanceToMove.QuadPart;
+    // Check if the adjustment goes into negatives, which cannot be permitted (while adjusting beyond the bufLen MAY be permitted)
+    if (tmpPos < 0)
+    {
+        // ERROR case, make no permanent changes, set error and return
+        SetLastError(ERROR_NEGATIVE_SEEK);
+        return FALSE;
+    }
+    else {
+        // SUCCESS case
+        // Adjustment is valid, make the changes and return
+        fPos = tmpPos;
+        fStruct->pos = fPos;
+        if (lpNewFilePointer != NULL)
+        {
+            lpNewFilePointer->QuadPart = fPos;
+        }
+        return TRUE;
+    }
+}
+
+
+extern "C"
+__declspec(dllexport)
+BOOL WINAPI MySetFilePointerEx(HANDLE hFile,
+    LARGE_INTEGER   liDistanceToMove,
+    PLARGE_INTEGER  lpNewFilePointer,
+    DWORD  dwMoveMethod)
+{
+    // Check if this is a handle we want to intercept
+    for (int i = 0; i < hFiles_Elem; i++)
+    {
+        if (hFile == hFiles[i].hFile) {
+            // File match, lets do our logic on this
+            return MySetFilePointerExInternal(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod, &hFiles[i]);
+        }
+    }
+
+    // Not our handle, pass to OS
+    return fSetFilePointerEx(hFile, liDistanceToMove, lpNewFilePointer, dwMoveMethod);
+}
+
+
+extern "C"
+__declspec(dllexport)
+DWORD WINAPI MySetFilePointer(HANDLE hFile,
+    LONG   lDistanceToMove,
+    PLONG  lpDistanceToMoveHigh,
+    DWORD  dwMoveMethod)
+{
+    // Check if this is a handle we want to intercept
+    for (int i = 0; i < hFiles_Elem; i++)
+    {
+        if (hFile == hFiles[i].hFile) {
+            // File match, lets do our logic on this
+            return MySetFilePointerInternal(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod, &hFiles[i]);
+        }
+    }
+
+    // Not our handle, pass to OS
+    return fSetFilePointer(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod);
+}
+
+
 
 
 
@@ -411,12 +586,56 @@ HANDLE WINAPI MyCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
 
 }
 
+extern "C"
+__declspec(dllexport)
+BOOL MyGetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize)
+{
+    // Check if this is a handle we want to intercept
+    for (int i = 0; i < hFiles_Elem; i++)
+    {
+        if (hFile == hFiles[i].hFile) {
+            // File match, lets do our logic on this
+            lpFileSize->QuadPart = hFiles[i].bufLen;
+            return TRUE;
+        }
+    }
+
+    // Not our handle, pass to OS
+    return GetFileSizeEx(hFile, lpFileSize);
+}
+
+extern "C"
+__declspec(dllexport)
+DWORD MyGetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
+{
+    // Check if this is a handle we want to intercept
+    for (int i = 0; i < hFiles_Elem; i++)
+    {
+        if (hFile == hFiles[i].hFile) {
+            // File match, lets do our logic on this
+            if (lpFileSizeHigh != NULL)
+            {
+                // Add second return param as the high-order bytes by shifting and casting
+                *lpFileSizeHigh = (hFiles[i].bufLen >> 32);
+            }
+            // Return the low-order bytes
+            return hFiles[i].bufLen;
+        }
+    }
+
+    // Not our handle, pass to OS
+    return GetFileSize(hFile, lpFileSizeHigh);
+}
+
+
+
 
 
 
 NTSTATUS MyNtCreateFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes,
     ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength)
 {
+    // TODO replace this logic with checking the filename
     if (ShouldHook) {
         ShouldHook = FALSE;
         // first hit is going to be our target
@@ -493,8 +712,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
             ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength))GetProcAddress(LoadLibraryA("ntdll.dll"), "NtCreateFile");
         DetourAttach(&(PVOID&)fNtCreateFile, MyNtCreateFile);
         */
-       //fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
-       //DetourAttach(&(PVOID&)fCloseHandle, MyCloseHandle);
+       fCloseHandle = (BOOL(WINAPI*)(HANDLE))GetProcAddress(LoadLibraryA("kernel32.dll"), "CloseHandle");
+       DetourAttach(&(PVOID&)fCloseHandle, MyCloseHandle);
        //fFreeLibrary = (BOOL(WINAPI*)(HMODULE))GetProcAddress(LoadLibraryA("kernelbase.dll"), "FreeLibrary");
        //DetourAttach(&(PVOID&)fFreeLibrary, MyFreeLibrary);
        fGetOverlappedResult = (BOOL(WINAPI*)(HANDLE       hFile,
@@ -502,6 +721,15 @@ BOOL APIENTRY DllMain(HMODULE hModule,
            LPDWORD      lpNumberOfBytesTransferred,
            BOOL         bWait))GetProcAddress(LoadLibraryA("Kernel32.dll"), "GetOverlappedResult");
        DetourAttach(&(PVOID&)fGetOverlappedResult, MyGetOverlappedResult);
+       fSetFilePointer = (DWORD(WINAPI*)(HANDLE, LONG, PLONG, DWORD))GetProcAddress(LoadLibraryA("kernelbase.dll"), "SetFilePointer");
+       DetourAttach(&(PVOID&)fSetFilePointer, MySetFilePointer);
+       fSetFilePointerEx = (BOOL(WINAPI*)(HANDLE, LARGE_INTEGER, PLARGE_INTEGER, DWORD))GetProcAddress(LoadLibraryA("kernelbase.dll"), "SetFilePointerEx");
+       DetourAttach(&(PVOID&)fSetFilePointerEx, MySetFilePointerEx);
+       fGetFileSize = (DWORD(WINAPI*)(HANDLE, LPDWORD))GetProcAddress(LoadLibraryA("kernelbase.dll"), "GetFileSize");
+       DetourAttach(&(PVOID&)fGetFileSize, MyGetFileSize);
+       fGetFileSizeEx = (BOOL(WINAPI*)(HANDLE, PLARGE_INTEGER))GetProcAddress(LoadLibraryA("kernelbase.dll"), "GetFileSizeEx");
+       DetourAttach(&(PVOID&)fGetFileSizeEx, MyGetFileSizeEx);
+       
        //fWriteFile = (BOOL(WINAPI*)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED))GetProcAddress(LoadLibraryA("kernel32.dll"), "WriteFile");
        //DetourAttach(&(PVOID&)fWriteFile, MyWriteFile);
        DetourTransactionCommit();

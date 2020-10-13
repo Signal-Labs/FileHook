@@ -1,5 +1,7 @@
 ﻿  dllmain.cpp
-D:\Code\FileHook\dllmain.cpp(150,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(184,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
-D:\Code\FileHook\dllmain.cpp(202,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(177,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(211,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(229,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(619,29): warning C4244: 'return': conversion from 'DWORD64' to 'DWORD', possible loss of data
+     Creating library D:\Code\FileHook\Debug\Hook.lib and object D:\Code\FileHook\Debug\Hook.exp
   Hook.vcxproj -> D:\Code\FileHook\Debug\Hook.dll
