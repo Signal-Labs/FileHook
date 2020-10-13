@@ -103,6 +103,7 @@ HANDLE(WINAPI* fCreateFileW)(
 );
 
 // Target to intercept
+
 #define HARDCODED_FILEPATH L"c:\\tmp\\test.blg\0\0\0\0"
 // Copy we will memory-map
 #define HARDCODED_FILEPATH2 L"C:\\tmp\\test.png\0\0\0\0"
