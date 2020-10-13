@@ -3,9 +3,11 @@ d:\code\filehook\debug\vc142.idb
 d:\code\filehook\debug\dllmain.obj
 d:\code\filehook\debug\hook.lib
 d:\code\filehook\debug\hook.exp
-d:\code\filehook\debug\hook.ilk
 d:\code\filehook\debug\hook.dll
+d:\code\filehook\debug\hook.ilk
 d:\code\filehook\debug\hook.pdb
+d:\code\filehook\debug\hook_testsuite.ilk
+d:\code\filehook\debug\hook_testsuite.pdb
 d:\code\filehook\debug\hook.tlog\cl.command.1.tlog
 d:\code\filehook\debug\hook.tlog\cl.read.1.tlog
 d:\code\filehook\debug\hook.tlog\cl.write.1.tlog

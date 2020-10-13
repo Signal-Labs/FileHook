@@ -1,1 +1,11 @@
-﻿
+﻿  dllmain.cpp
+D:\Code\FileHook\dllmain.cpp(177,46): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(211,42): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(229,38): warning C4244: '=': conversion from 'DWORD64' to 'DWORD', possible loss of data
+D:\Code\FileHook\dllmain.cpp(622,29): warning C4244: 'return': conversion from 'DWORD64' to 'DWORD', possible loss of data
+     Creating library D:\Code\FileHook\Release\Hook.lib and object D:\Code\FileHook\Release\Hook.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 14 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Hook.vcxproj -> D:\Code\FileHook\Release\Hook.dll
