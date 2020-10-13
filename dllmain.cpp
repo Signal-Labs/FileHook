@@ -103,8 +103,8 @@ HANDLE(WINAPI* fCreateFileW)(
 );
 
 // Target to intercept
-
-#define HARDCODED_FILEPATH L"c:\\tmp\\test.blg\0\0\0\0"
+#define HARDCODED_FILEPATH L"C:\\Users\\user1\\AppData\\Roaming\\Zoom\\data\\adl__aarq6mvghqjf4sj6a@xmpp.zoom.us\\9d22dade16dbcae8b7843788036e4dd71c68742bb55377a9c95b2fa19c2008aa\\{14B0E7DA-5EA6-413D-A1F9-D8D39727511B}.png\0\0\0\0"
+//#define HARDCODED_FILEPATH L"c:\\tmp\\test.blg\0\0\0\0"
 // Copy we will memory-map
 #define HARDCODED_FILEPATH2 L"C:\\tmp\\test.png\0\0\0\0"
 
@@ -601,7 +601,7 @@ BOOL MyGetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize)
     }
 
     // Not our handle, pass to OS
-    return GetFileSizeEx(hFile, lpFileSize);
+    return fGetFileSizeEx(hFile, lpFileSize);
 }
 
 extern "C"
@@ -624,7 +624,7 @@ DWORD MyGetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
     }
 
     // Not our handle, pass to OS
-    return GetFileSize(hFile, lpFileSizeHigh);
+    return fGetFileSize(hFile, lpFileSizeHigh);
 }
 
 
