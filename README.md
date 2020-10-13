@@ -12,6 +12,8 @@ This should support both ASYNC and SYNC reads, including OVERLAPPED reads. Not g
 
 Note: There are three #define HARDCODED_FILEPATH vars, one is the target to intercept, another is one we will map in-mem (may be the same as target or different), another is used if we fake writes.
 
+Also Note: Due to the access we request of the HARDCODED filepaths, you may need to modify the security of the files to allow "Full Control" to your user or group.
+
 The idea is:
 
 1. Prog attempts to call CreateFileW on e.g. c:\test.txt
